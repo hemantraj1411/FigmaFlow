@@ -8,14 +8,14 @@ import jwt from 'jsonwebtoken';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT || '5000', 10);
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// MongoDB Connection with better error handling
+// MongoDB Connection
 const connectDB = async () => {
   try {
     const mongoURI = process.env.MONGODB_URI;
@@ -30,24 +30,7 @@ const connectDB = async () => {
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
     console.log(`📊 Database Name: ${conn.connection.name}`);
   } catch (error: any) {
-    console.error('❌ MongoDB connection error:');
-    
-    if (error.message.includes('whitelist')) {
-      console.error('\n🔒 IP Whitelist Issue Detected!');
-      console.error('📝 To fix this:');
-      console.error('   1. Go to https://cloud.mongodb.com');
-      console.error('   2. Login to your account');
-      console.error('   3. Click "Network Access" in left sidebar');
-      console.error('   4. Click "Add IP Address"');
-      console.error('   5. Click "Add Current IP Address"');
-      console.error('   6. Click "Confirm"\n');
-    } else if (error.message.includes('bad auth')) {
-      console.error('\n🔑 Authentication Failed!');
-      console.error('📝 Please check your username and password in MONGODB_URI\n');
-    } else {
-      console.error(error.message);
-    }
-    
+    console.error('❌ MongoDB connection error:', error.message);
     process.exit(1);
   }
 };
@@ -56,7 +39,7 @@ connectDB();
 
 // ==================== INTERFACES ====================
 
-interface IUser extends mongoose.Document {
+interface IUser {
   name: string;
   email: string;
   password: string;
@@ -69,8 +52,8 @@ interface IUser extends mongoose.Document {
 
 // ==================== MODELS ====================
 
-// User Schema with proper typing
-const userSchema = new mongoose.Schema<IUser>({
+// User Schema
+const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
@@ -90,19 +73,10 @@ userSchema.methods.comparePassword = async function(candidatePassword: string): 
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-const User = mongoose.model<IUser>('User', userSchema);
+const User = mongoose.model('User', userSchema);
 
 // Period Schema
-interface IPeriod extends mongoose.Document {
-  userId: mongoose.Types.ObjectId;
-  startDate: Date;
-  endDate: Date;
-  flow: 'light' | 'medium' | 'heavy';
-  symptoms: string[];
-  notes?: string;
-}
-
-const periodSchema = new mongoose.Schema<IPeriod>({
+const periodSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   startDate: { type: Date, required: true },
   endDate: { type: Date, required: true },
@@ -111,18 +85,10 @@ const periodSchema = new mongoose.Schema<IPeriod>({
   notes: { type: String }
 }, { timestamps: true });
 
-const Period = mongoose.model<IPeriod>('Period', periodSchema);
+const Period = mongoose.model('Period', periodSchema);
 
 // Mood Schema
-interface IMood extends mongoose.Document {
-  userId: mongoose.Types.ObjectId;
-  date: Date;
-  mood: 'happy' | 'sad' | 'angry' | 'tired' | 'energetic' | 'anxious' | 'calm';
-  intensity: number;
-  notes?: string;
-}
-
-const moodSchema = new mongoose.Schema<IMood>({
+const moodSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   date: { type: Date, required: true },
   mood: { type: String, enum: ['happy', 'sad', 'angry', 'tired', 'energetic', 'anxious', 'calm'], required: true },
@@ -130,26 +96,10 @@ const moodSchema = new mongoose.Schema<IMood>({
   notes: { type: String }
 }, { timestamps: true });
 
-const Mood = mongoose.model<IMood>('Mood', moodSchema);
+const Mood = mongoose.model('Mood', moodSchema);
 
 // Symptom Schema
-interface ISymptom extends mongoose.Document {
-  userId: mongoose.Types.ObjectId;
-  date: Date;
-  symptoms: {
-    cramps: number;
-    headache: number;
-    bloating: number;
-    backPain: number;
-    acne: number;
-    breastTenderness: number;
-    fatigue: number;
-    nausea: number;
-  };
-  notes?: string;
-}
-
-const symptomSchema = new mongoose.Schema<ISymptom>({
+const symptomSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   date: { type: Date, required: true },
   symptoms: {
@@ -165,21 +115,10 @@ const symptomSchema = new mongoose.Schema<ISymptom>({
   notes: { type: String }
 }, { timestamps: true });
 
-const Symptom = mongoose.model<ISymptom>('Symptom', symptomSchema);
+const Symptom = mongoose.model('Symptom', symptomSchema);
 
 // Chat History Schema
-interface IChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
-
-interface IChatHistory extends mongoose.Document {
-  userId: mongoose.Types.ObjectId;
-  messages: IChatMessage[];
-}
-
-const chatHistorySchema = new mongoose.Schema<IChatHistory>({
+const chatHistorySchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
   messages: [{
     role: { type: String, enum: ['user', 'assistant'], required: true },
@@ -188,17 +127,11 @@ const chatHistorySchema = new mongoose.Schema<IChatHistory>({
   }]
 }, { timestamps: true });
 
-const ChatHistory = mongoose.model<IChatHistory>('ChatHistory', chatHistorySchema);
-
-// ==================== CUSTOM REQUEST TYPE ====================
-
-interface AuthRequest extends express.Request {
-  user?: IUser;
-}
+const ChatHistory = mongoose.model('ChatHistory', chatHistorySchema);
 
 // ==================== MIDDLEWARE ====================
 
-const protect = async (req: AuthRequest, res: express.Response, next: express.NextFunction) => {
+const protect = async (req: any, res: any, next: any) => {
   let token;
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     token = req.headers.authorization.split(' ')[1];
@@ -208,20 +141,44 @@ const protect = async (req: AuthRequest, res: express.Response, next: express.Ne
   }
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'defaultsecret') as { id: string };
-    const user = await User.findById(decoded.id).select('-password');
-    if (!user) {
-      return res.status(401).json({ message: 'User not found' });
-    }
-    req.user = user;
+    req.user = await User.findById(decoded.id).select('-password');
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Not authorized to access this route' });
   }
 };
 
+// ==================== PREDICTION FUNCTION ====================
+
+const calculatePrediction = (periods: any[], cycleLength: number = 28) => {
+  if (!periods || periods.length === 0) {
+    return null;
+  }
+  
+  const lastPeriod = periods[0];
+  const lastStartDate = new Date(lastPeriod.startDate);
+  const nextPeriodDate = new Date(lastStartDate);
+  nextPeriodDate.setDate(lastStartDate.getDate() + cycleLength);
+  
+  const ovulationDate = new Date(nextPeriodDate);
+  ovulationDate.setDate(nextPeriodDate.getDate() - 14);
+  
+  const fertileStart = new Date(ovulationDate);
+  fertileStart.setDate(ovulationDate.getDate() - 5);
+  const fertileEnd = new Date(ovulationDate);
+  fertileEnd.setDate(ovulationDate.getDate() + 1);
+  
+  return {
+    nextPeriod: nextPeriodDate,
+    ovulationDate,
+    fertileWindow: { start: fertileStart, end: fertileEnd },
+    daysUntilNextPeriod: Math.ceil((nextPeriodDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24))
+  };
+};
+
 // ==================== AUTH ROUTES ====================
 
-app.post('/api/auth/register', async (req: express.Request, res: express.Response) => {
+app.post('/api/auth/register', async (req: any, res: any) => {
   try {
     const { name, email, password } = req.body;
     const userExists = await User.findOne({ email });
@@ -242,20 +199,20 @@ app.post('/api/auth/register', async (req: express.Request, res: express.Respons
         lastPeriodDate: user.lastPeriodDate
       }
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
-    res.status(500).json({ message: 'Server error', error: (error as Error).message });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
-app.post('/api/auth/login', async (req: express.Request, res: express.Response) => {
+app.post('/api/auth/login', async (req: any, res: any) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
-    const isPasswordMatch = await user.comparePassword(password);
+    const isPasswordMatch = await (user as any).comparePassword(password);
     if (!isPasswordMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -272,133 +229,142 @@ app.post('/api/auth/login', async (req: express.Request, res: express.Response) 
         lastPeriodDate: user.lastPeriodDate
       }
     });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: (error as Error).message });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
-app.get('/api/auth/profile', protect, async (req: AuthRequest, res: express.Response) => {
+app.get('/api/auth/profile', protect, async (req: any, res: any) => {
   try {
-    const user = await User.findById(req.user!._id).select('-password');
+    const user = await User.findById(req.user._id).select('-password');
     res.json({ success: true, user });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: (error as Error).message });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
-app.put('/api/auth/profile', protect, async (req: AuthRequest, res: express.Response) => {
+app.put('/api/auth/profile', protect, async (req: any, res: any) => {
   try {
     const { name, cycleLength, periodLength, lastPeriodDate } = req.body;
     const user = await User.findByIdAndUpdate(
-      req.user!._id,
+      req.user._id,
       { name, cycleLength, periodLength, lastPeriodDate },
       { new: true }
     ).select('-password');
     res.json({ success: true, user });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: (error as Error).message });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
 // ==================== PERIOD ROUTES ====================
 
-app.post('/api/periods', protect, async (req: AuthRequest, res: express.Response) => {
+app.post('/api/periods', protect, async (req: any, res: any) => {
   try {
     const period = await Period.create({
-      userId: req.user!._id,
+      userId: req.user._id,
       ...req.body
     });
-    await User.findByIdAndUpdate(req.user!._id, { lastPeriodDate: req.body.startDate });
-    res.status(201).json({ success: true, period });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: (error as Error).message });
+    await User.findByIdAndUpdate(req.user._id, { lastPeriodDate: req.body.startDate });
+    
+    const allPeriods = await Period.find({ userId: req.user._id }).sort({ startDate: -1 });
+    const prediction = calculatePrediction(allPeriods, req.user.cycleLength);
+    
+    res.status(201).json({ success: true, period, prediction });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
-app.get('/api/periods', protect, async (req: AuthRequest, res: express.Response) => {
+app.get('/api/periods', protect, async (req: any, res: any) => {
   try {
-    const periods = await Period.find({ userId: req.user!._id }).sort({ startDate: -1 });
-    
-    let prediction = null;
-    if (periods.length > 0) {
-      const lastPeriod = periods[0];
-      const lastStartDate = new Date(lastPeriod.startDate);
-      const cycleLength = req.user!.cycleLength || 28;
-      const nextPeriodDate = new Date(lastStartDate);
-      nextPeriodDate.setDate(lastStartDate.getDate() + cycleLength);
-      const ovulationDate = new Date(nextPeriodDate);
-      ovulationDate.setDate(nextPeriodDate.getDate() - 14);
-      const fertileStart = new Date(ovulationDate);
-      fertileStart.setDate(ovulationDate.getDate() - 5);
-      const fertileEnd = new Date(ovulationDate);
-      fertileEnd.setDate(ovulationDate.getDate() + 1);
-      prediction = {
-        nextPeriod: nextPeriodDate,
-        ovulationDate,
-        fertileWindow: { start: fertileStart, end: fertileEnd },
-        daysUntilNextPeriod: Math.ceil((nextPeriodDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24))
-      };
-    }
-    
+    const periods = await Period.find({ userId: req.user._id }).sort({ startDate: -1 });
+    const prediction = calculatePrediction(periods, req.user.cycleLength);
     res.json({ success: true, periods, prediction });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: (error as Error).message });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+app.put('/api/periods/:id', protect, async (req: any, res: any) => {
+  try {
+    const period = await Period.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user._id },
+      req.body,
+      { new: true }
+    );
+    const allPeriods = await Period.find({ userId: req.user._id }).sort({ startDate: -1 });
+    const prediction = calculatePrediction(allPeriods, req.user.cycleLength);
+    res.json({ success: true, period, prediction });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+app.delete('/api/periods/:id', protect, async (req: any, res: any) => {
+  try {
+    await Period.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
+    const allPeriods = await Period.find({ userId: req.user._id }).sort({ startDate: -1 });
+    const prediction = calculatePrediction(allPeriods, req.user.cycleLength);
+    res.json({ success: true, prediction });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
 // ==================== MOOD ROUTES ====================
 
-app.post('/api/moods', protect, async (req: AuthRequest, res: express.Response) => {
+app.post('/api/moods', protect, async (req: any, res: any) => {
   try {
     const mood = await Mood.create({
-      userId: req.user!._id,
+      userId: req.user._id,
       ...req.body
     });
     res.status(201).json({ success: true, mood });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: (error as Error).message });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
-app.get('/api/moods', protect, async (req: AuthRequest, res: express.Response) => {
+app.get('/api/moods', protect, async (req: any, res: any) => {
   try {
     const { startDate, endDate } = req.query;
-    const query: any = { userId: req.user!._id };
+    const query: any = { userId: req.user._id };
     if (startDate && endDate) {
       query.date = { $gte: new Date(startDate as string), $lte: new Date(endDate as string) };
     }
     const moods = await Mood.find(query).sort({ date: -1 });
     res.json({ success: true, moods });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: (error as Error).message });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
 // ==================== SYMPTOM ROUTES ====================
 
-app.post('/api/symptoms', protect, async (req: AuthRequest, res: express.Response) => {
+app.post('/api/symptoms', protect, async (req: any, res: any) => {
   try {
     const symptom = await Symptom.create({
-      userId: req.user!._id,
+      userId: req.user._id,
       ...req.body
     });
     res.status(201).json({ success: true, symptom });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: (error as Error).message });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
-app.get('/api/symptoms', protect, async (req: AuthRequest, res: express.Response) => {
+app.get('/api/symptoms', protect, async (req: any, res: any) => {
   try {
     const { startDate, endDate } = req.query;
-    const query: any = { userId: req.user!._id };
+    const query: any = { userId: req.user._id };
     if (startDate && endDate) {
       query.date = { $gte: new Date(startDate as string), $lte: new Date(endDate as string) };
     }
     const symptoms = await Symptom.find(query).sort({ date: -1 });
     res.json({ success: true, symptoms });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: (error as Error).message });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
@@ -427,12 +393,12 @@ const getBotResponse = (message: string): string => {
   return "Thanks for your question! I'm here to provide general information about periods, menstrual health, and wellness. For personalized medical advice, please consult a healthcare provider.";
 };
 
-app.post('/api/chat/message', protect, async (req: AuthRequest, res: express.Response) => {
+app.post('/api/chat/message', protect, async (req: any, res: any) => {
   try {
     const { message } = req.body;
-    let chatHistory = await ChatHistory.findOne({ userId: req.user!._id });
+    let chatHistory = await ChatHistory.findOne({ userId: req.user._id });
     if (!chatHistory) {
-      chatHistory = await ChatHistory.create({ userId: req.user!._id, messages: [] });
+      chatHistory = await ChatHistory.create({ userId: req.user._id, messages: [] });
     }
     chatHistory.messages.push({
       role: 'user',
@@ -447,29 +413,47 @@ app.post('/api/chat/message', protect, async (req: AuthRequest, res: express.Res
     });
     await chatHistory.save();
     res.json({ success: true, response: botResponse, messages: chatHistory.messages.slice(-10) });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: (error as Error).message });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
-app.get('/api/chat/history', protect, async (req: AuthRequest, res: express.Response) => {
+app.get('/api/chat/history', protect, async (req: any, res: any) => {
   try {
-    const chatHistory = await ChatHistory.findOne({ userId: req.user!._id });
+    const chatHistory = await ChatHistory.findOne({ userId: req.user._id });
     res.json({ success: true, messages: chatHistory?.messages.slice(-50) || [] });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: (error as Error).message });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
 // ==================== HEALTH CHECK ====================
 
-app.get('/api/health', (req: express.Request, res: express.Response) => {
+app.get('/api/health', (req: any, res: any) => {
   res.json({ status: 'ok', message: 'Feminaflow API is running' });
 });
 
-// ==================== START SERVER ====================
+// ==================== ROOT ROUTE ====================
 
-app.listen(PORT, () => {
+app.get('/', (req: any, res: any) => {
+  res.json({ 
+    message: 'Feminaflow API is running',
+    status: 'ok',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      periods: '/api/periods',
+      moods: '/api/moods',
+      symptoms: '/api/symptoms',
+      chat: '/api/chat'
+    }
+  });
+});
+
+// ==================== START SERVER ====================
+// FIXED: Proper port handling with numeric value
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🚀 Server running on port ${PORT}`);
   console.log(`📍 Health check: http://localhost:${PORT}/api/health`);
   console.log(`📍 API URL: http://localhost:${PORT}/api\n`);
