@@ -2,11 +2,12 @@
   "name": "feminaflow",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
+    "scripts": {
     "dev": "next dev --webpack",
-    "dev:turbo": "next dev --turbopack",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "next lint",
+    "vercel-build": "next build"
   },
   "dependencies": {
     "@react-spring/web": "^10.1.0",
