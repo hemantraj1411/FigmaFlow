@@ -1,35 +1,28 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
+    unoptimized: true,
+    domains: ['localhost', 'figmaflow.onrender.com'],
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'localhost',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '',
-        pathname: '/**',
+        hostname: '**',
       },
     ],
-    // Add allowed qualities
-    qualities: [75, 100],
-    // Allow unoptimized for production
-    unoptimized: process.env.NODE_ENV === 'production',
   },
-  // Output configuration for Vercel
   output: 'standalone',
-  // Ignore TypeScript errors during build (temporary)
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  // Ignore ESLint errors during build
   eslint: {
     ignoreDuringBuilds: true,
   },
-};
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  // Remove swcMinify - it's enabled by default in Next.js 14+
+  // Add these for better Vercel compatibility
+  compress: true,
+  generateEtags: true,
+  poweredByHeader: false,
+  reactStrictMode: true,
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig
