@@ -18,12 +18,29 @@ mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ MongoDB Connected'))
   .catch(err => console.error('MongoDB error:', err));
 
-// Basic route
+// ==================== ROOT ROUTE ====================
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Feminaflow API is running',
+    status: 'ok',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      periods: '/api/periods',
+      moods: '/api/moods',
+      symptoms: '/api/symptoms',
+      chat: '/api/chat'
+    }
+  });
+});
+
+// ==================== HEALTH ROUTE ====================
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Feminaflow API is running' });
 });
 
-// User Schema
+// ==================== USER SCHEMA ====================
 const userSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
@@ -46,7 +63,7 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
 
 const User = mongoose.model('User', userSchema);
 
-// Auth Routes
+// ==================== AUTH ROUTES ====================
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -76,7 +93,44 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Start server
+// ==================== PERIOD ROUTES ====================
+app.get('/api/periods', async (req, res) => {
+  try {
+    // This will be implemented with authentication
+    res.json({ message: 'Periods endpoint - Add authentication' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ==================== MOOD ROUTES ====================
+app.get('/api/moods', async (req, res) => {
+  try {
+    res.json({ message: 'Moods endpoint - Add authentication' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ==================== SYMPTOM ROUTES ====================
+app.get('/api/symptoms', async (req, res) => {
+  try {
+    res.json({ message: 'Symptoms endpoint - Add authentication' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ==================== CHAT ROUTES ====================
+app.get('/api/chat', async (req, res) => {
+  try {
+    res.json({ message: 'Chat endpoint - Add authentication' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ==================== START SERVER ====================
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
