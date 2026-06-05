@@ -95,6 +95,7 @@ export function usePeriodTracker() {
       toast.success('Period deleted successfully');
       return { success: true };
     } catch (error: any) {
+      console.error('Delete period error:', error);
       toast.error(error.response?.data?.message || 'Failed to delete period');
       return { success: false, error: error.response?.data?.message };
     }

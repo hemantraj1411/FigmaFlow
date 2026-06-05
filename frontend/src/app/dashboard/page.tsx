@@ -1,21 +1,25 @@
 'use client';
 
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePeriodTracker } from '@/hooks/usePeriodTracker';
-import { motion } from 'framer-motion';
-import { Heart, Calendar, Activity, Droplet, Brain, TrendingUp, Award, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Heart, Calendar, Activity, Droplet, Brain, TrendingUp, Award, Sparkles, Trash2, X, Check, AlertCircle } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import Image from 'next/image';
+import { toast } from 'sonner';
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { prediction, periods, loading } = usePeriodTracker();
+  const { prediction, periods, loading, deletePeriod, fetchPeriods } = usePeriodTracker();
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const bgVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    // Auto-play background video
     if (bgVideoRef.current) {
       bgVideoRef.current.play().catch(error => {
         console.log("Background video autoplay failed:", error);
@@ -36,6 +40,24 @@ export default function DashboardPage() {
   const currentCycleDay = calculateCycleDay();
   const cycleProgress = ((currentCycleDay - 1) / (user?.cycleLength || 28)) * 100;
   const daysUntilNextPeriod = prediction?.daysUntilNextPeriod || 0;
+
+  // Handle delete period
+  const handleDeleteClick = (period: any) => {
+    setSelectedPeriod(period);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedPeriod) return;
+    setIsDeleting(true);
+    const result = await deletePeriod(selectedPeriod._id);
+    if (result.success) {
+      toast.success('Period deleted successfully');
+      setDeleteModalOpen(false);
+      setSelectedPeriod(null);
+    }
+    setIsDeleting(false);
+  };
 
   const stats = [
     { 
@@ -115,7 +137,6 @@ export default function DashboardPage() {
         >
           <source src="/images/img5.mp4" type="video/mp4" />
         </video>
-        {/* Overlay gradient for better text readability */}
         <div className="absolute inset-0 bg-gradient-to-br from-pink-900/50 via-purple-900/40 to-rose-900/50"></div>
       </div>
 
@@ -251,7 +272,7 @@ export default function DashboardPage() {
             </motion.div>
           </div>
 
-          {/* Recent Periods */}
+          {/* Recent Periods with Delete Option */}
           {periods?.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -259,33 +280,53 @@ export default function DashboardPage() {
               transition={{ delay: 0.6 }}
               className="mt-8 bg-white/10 backdrop-blur-md rounded-xl p-6 shadow-lg border border-white/20"
             >
-              <h2 className="text-xl font-semibold mb-4 text-white flex items-center gap-2">
-                <Droplet className="w-5 h-5 text-pink-300" />
-                Recent Periods
-              </h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                  <Droplet className="w-5 h-5 text-pink-300" />
+                  Recent Periods
+                </h2>
+                <span className="text-xs text-white/50">{periods.length} total cycles</span>
+              </div>
               <div className="space-y-3">
-                {periods.slice(0, 5).map((period) => (
-                  <div key={period._id} className="flex items-center justify-between p-3 bg-white/10 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Droplet className="w-5 h-5 text-pink-300" />
-                      <div>
-                        <p className="font-medium text-white">
-                          {format(new Date(period.startDate), 'MMM dd')} - {format(new Date(period.endDate), 'MMM dd, yyyy')}
-                        </p>
-                        <p className="text-sm text-white/60 capitalize">Flow: {period.flow}</p>
+                <AnimatePresence>
+                  {periods.slice(0, 5).map((period) => (
+                    <motion.div
+                      key={period._id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, x: -100 }}
+                      className="group relative"
+                    >
+                      <div className="flex items-center justify-between p-3 bg-white/10 rounded-lg hover:bg-white/20 transition-all">
+                        <div className="flex items-center gap-3 flex-1">
+                          <Droplet className="w-5 h-5 text-pink-300" />
+                          <div>
+                            <p className="font-medium text-white">
+                              {format(new Date(period.startDate), 'MMM dd')} - {format(new Date(period.endDate), 'MMM dd, yyyy')}
+                            </p>
+                            <p className="text-sm text-white/60 capitalize">Flow: {period.flow}</p>
+                          </div>
+                        </div>
+                        {period.symptoms.length > 0 && (
+                          <div className="flex gap-1 flex-wrap max-w-[40%]">
+                            {period.symptoms.slice(0, 3).map((symptom, idx) => (
+                              <span key={idx} className="text-xs bg-pink-500/20 text-pink-200 px-2 py-1 rounded-full">
+                                {symptom}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <button
+                          onClick={() => handleDeleteClick(period)}
+                          className="ml-3 p-2 rounded-lg text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all opacity-0 group-hover:opacity-100"
+                          title="Delete period"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
-                    </div>
-                    {period.symptoms.length > 0 && (
-                      <div className="flex gap-1">
-                        {period.symptoms.slice(0, 3).map((symptom, idx) => (
-                          <span key={idx} className="text-xs bg-pink-500/20 text-pink-200 px-2 py-1 rounded-full">
-                            {symptom}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             </motion.div>
           )}
@@ -304,6 +345,67 @@ export default function DashboardPage() {
           </motion.div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deleteModalOpen && selectedPeriod && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setDeleteModalOpen(false)}
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-red-500/30"
+            >
+              <div className="text-center mb-4">
+                <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <AlertCircle className="w-8 h-8 text-red-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-white">Delete Period Record?</h3>
+                <p className="text-gray-400 mt-2 text-sm">
+                  Are you sure you want to delete the period from{' '}
+                  <span className="text-pink-300 font-medium">
+                    {format(new Date(selectedPeriod.startDate), 'MMM dd')} - {format(new Date(selectedPeriod.endDate), 'MMM dd, yyyy')}
+                  </span>
+                  ? This action cannot be undone.
+                </p>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setDeleteModalOpen(false)}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-white/10 rounded-lg text-white hover:bg-white/20 transition-all"
+                >
+                  <X className="w-4 h-4" />
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  disabled={isDeleting}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-500 rounded-lg text-white hover:bg-red-600 transition-all disabled:opacity-50"
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      Delete
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
