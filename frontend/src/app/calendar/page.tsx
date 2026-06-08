@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Heart, Droplet, Sparkles, Info, AlertCircle } from 'lucide-react';
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isWithinInterval, isBefore, isAfter } from 'date-fns';
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isWithinInterval, isBefore, isAfter, getDay } from 'date-fns';
 import { usePeriodTracker } from '@/hooks/usePeriodTracker';
 import { useAuth } from '@/hooks/useAuth';
 import Image from 'next/image';
@@ -23,9 +23,37 @@ export default function CalendarPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const monthStart = startOfMonth(currentMonth);
-  const monthEnd = endOfMonth(currentMonth);
-  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  // Get days for calendar starting from Monday
+  const getMonthDays = () => {
+    const start = startOfMonth(currentMonth);
+    const end = endOfMonth(currentMonth);
+    const daysArray = eachDayOfInterval({ start, end });
+    
+    // Add days from previous month to start from Monday
+    const startDayOfWeek = getDay(start);
+    // Adjust: Monday = 0, Sunday = 6
+    const daysToAdd = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
+    
+    const prevMonthDays = [];
+    for (let i = daysToAdd; i > 0; i--) {
+      const prevDate = new Date(start);
+      prevDate.setDate(start.getDate() - i);
+      prevMonthDays.push(prevDate);
+    }
+    
+    // Add days from next month to fill grid
+    const remainingDays = 42 - (prevMonthDays.length + daysArray.length);
+    const nextMonthDays = [];
+    for (let i = 1; i <= remainingDays; i++) {
+      const nextDate = new Date(end);
+      nextDate.setDate(end.getDate() + i);
+      nextMonthDays.push(nextDate);
+    }
+    
+    return [...prevMonthDays, ...daysArray, ...nextMonthDays];
+  };
+
+  const days = getMonthDays();
 
   // Get period status for a date
   const getPeriodStatus = (date: Date) => {
@@ -103,6 +131,9 @@ export default function CalendarPage() {
     { color: 'bg-rose-400', label: 'Expected Period', icon: <CalendarIcon className="w-3 h-3" /> },
     { color: 'bg-green-500', label: 'Today', icon: <div className="w-3 h-3 rounded-full bg-green-500"></div> },
   ];
+
+  // Week days starting from Monday
+  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   return (
     <div className="min-h-screen relative">
@@ -212,9 +243,9 @@ export default function CalendarPage() {
               ))}
             </div>
 
-            {/* Week Days */}
+            {/* Week Days - Starting from Monday */}
             <div className="grid grid-cols-7 gap-1 p-4 bg-white/5">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+              {weekDays.map(day => (
                 <div key={day} className="text-center font-semibold text-white/80 py-2 text-sm">
                   {day}
                 </div>

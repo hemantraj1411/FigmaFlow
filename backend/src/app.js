@@ -85,6 +85,18 @@ const symptomSchema = new mongoose.Schema({
 
 const Symptom = mongoose.model('Symptom', symptomSchema);
 
+// Chat History Schema
+const chatHistorySchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+  messages: [{
+    role: { type: String, enum: ['user', 'assistant'], required: true },
+    content: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now }
+  }]
+}, { timestamps: true });
+
+const ChatHistory = mongoose.model('ChatHistory', chatHistorySchema);
+
 // ==================== MIDDLEWARE ====================
 const auth = async (req, res, next) => {
   try {
@@ -98,6 +110,32 @@ const auth = async (req, res, next) => {
   } catch (error) {
     res.status(401).json({ message: 'Invalid token' });
   }
+};
+
+// ==================== CHAT BOT RESPONSE FUNCTION ====================
+const getBotResponse = (message) => {
+  const msg = message.toLowerCase();
+  
+  if (msg.includes('period') && (msg.includes('late') || msg.includes('delay'))) {
+    return "Periods can be late due to various reasons like stress, hormonal changes, diet changes, or pregnancy. If you're concerned, consider taking a pregnancy test or consulting a healthcare provider.";
+  }
+  if (msg.includes('stress') && msg.includes('period')) {
+    return "Yes, stress can definitely affect your menstrual cycle! High stress levels can delay ovulation, which in turn can make your period late.";
+  }
+  if (msg.includes('ovulation')) {
+    return "Ovulation usually occurs about 14 days before your next period. Signs include changes in cervical mucus and a slight rise in basal body temperature.";
+  }
+  if (msg.includes('cramps')) {
+    return "To relieve cramps, try heat therapy (heating pad), gentle exercise, over-the-counter pain relievers like ibuprofen, or magnesium supplements.";
+  }
+  if (msg.includes('pms')) {
+    return "PMS symptoms can be managed with regular exercise, healthy diet, enough sleep, and stress management techniques.";
+  }
+  if (msg.includes('pregnancy') || msg.includes('pregnant')) {
+    return "If you think you might be pregnant, common early signs include missed period, nausea, breast tenderness, and fatigue. A pregnancy test is the best way to confirm. Please consult a healthcare provider for proper guidance.";
+  }
+  
+  return "Thanks for your question! I'm here to provide general information about periods, menstrual health, and wellness. For personalized medical advice, please consult a healthcare provider.";
 };
 
 // ==================== AUTH ROUTES ====================
@@ -238,6 +276,48 @@ app.post('/api/symptoms', auth, async (req, res) => {
     });
     res.status(201).json({ success: true, symptom });
   } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ==================== CHAT ROUTES ====================
+app.post('/api/chat/message', auth, async (req, res) => {
+  try {
+    const { message } = req.body;
+    let chatHistory = await ChatHistory.findOne({ userId: req.userId });
+    
+    if (!chatHistory) {
+      chatHistory = await ChatHistory.create({ userId: req.userId, messages: [] });
+    }
+    
+    chatHistory.messages.push({
+      role: 'user',
+      content: message,
+      timestamp: new Date()
+    });
+    
+    const botResponse = getBotResponse(message);
+    
+    chatHistory.messages.push({
+      role: 'assistant',
+      content: botResponse,
+      timestamp: new Date()
+    });
+    
+    await chatHistory.save();
+    res.json({ success: true, response: botResponse, messages: chatHistory.messages.slice(-10) });
+  } catch (error) {
+    console.error('Chat error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.get('/api/chat/history', auth, async (req, res) => {
+  try {
+    const chatHistory = await ChatHistory.findOne({ userId: req.userId });
+    res.json({ success: true, messages: chatHistory?.messages.slice(-50) || [] });
+  } catch (error) {
+    console.error('Chat history error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
