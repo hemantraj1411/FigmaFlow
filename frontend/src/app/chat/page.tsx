@@ -16,7 +16,7 @@ interface Message {
 }
 
 export default function ChatPage() {
-  const { token } = useAuth();
+  const { token, isAuthenticated } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,21 +24,33 @@ export default function ChatPage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetchChatHistory();
-  }, [token]);
+    if (token && isAuthenticated) {
+      fetchChatHistory();
+    }
+  }, [token, isAuthenticated]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
   const fetchChatHistory = async () => {
+    if (!token) {
+      console.log('No token available, skipping chat history fetch');
+      return;
+    }
+    
     try {
       const response = await axios.get(`${API_URL}/chat/history`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setMessages(response.data.messages);
-    } catch (error) {
-      console.error('Failed to fetch chat history:', error);
+      setMessages(response.data.messages || []);
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        console.log('Authentication required for chat history');
+        // Don't show error toast for 401, just log it
+      } else {
+        console.error('Failed to fetch chat history:', error);
+      }
     }
   };
 
@@ -49,6 +61,11 @@ export default function ChatPage() {
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
+    
+    if (!token) {
+      toast.error('Please login to use the chat feature');
+      return;
+    }
 
     const userMessage = input.trim();
     setInput('');
@@ -70,8 +87,13 @@ export default function ChatPage() {
         content: response.data.response,
         timestamp: new Date()
       }]);
-    } catch (error) {
-      toast.error('Failed to get response');
+    } catch (error: any) {
+      console.error('Chat error:', error);
+      if (error.response?.status === 401) {
+        toast.error('Please login again to continue chatting');
+      } else {
+        toast.error('Failed to get response. Please try again.');
+      }
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: "I'm having trouble responding right now. Please try again later.",

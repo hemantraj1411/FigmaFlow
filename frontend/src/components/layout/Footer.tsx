@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Heart, ArrowRight, Flower2 } from 'lucide-react';
+import { Heart, ArrowRight, Flower2, Code, Sparkles } from 'lucide-react';
 
 export default function Footer() {
   const scrollToTop = () => {
@@ -175,6 +175,48 @@ export default function Footer() {
             </motion.button>
           </div>
         </div>
+
+        {/* Developer Credit - Unique Stylish Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.5 }}
+          className="mt-8 pt-6 border-t border-white/5"
+        >
+          <div className="flex flex-col items-center justify-center gap-3">
+            {/* Decorative line */}
+            <div className="flex items-center gap-3">
+              <div className="w-16 h-px bg-gradient-to-r from-transparent to-pink-500"></div>
+              <Sparkles className="w-4 h-4 text-pink-400" />
+              <div className="w-16 h-px bg-gradient-to-l from-transparent to-pink-500"></div>
+            </div>
+            
+            {/* Developer Info */}
+            <div className="text-center">
+              <p className="text-gray-500 text-xs tracking-wider uppercase mb-1">Created with</p>
+              <div className="flex items-center justify-center gap-2 flex-wrap">
+                <Code className="w-4 h-4 text-pink-400" />
+                <span className="text-gray-300 text-sm font-medium">by</span>
+                <motion.span
+                  whileHover={{ scale: 1.05 }}
+                  className="text-base font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent cursor-pointer"
+                >
+                  Hemant Raj
+                </motion.span>
+                <span className="text-gray-600 text-sm mx-1">•</span>
+                <span className="text-gray-500 text-xs">Full Stack Developer</span>
+              </div>
+            </div>
+            
+            {/* Animated dot */}
+            <div className="flex items-center gap-1">
+              <div className="w-1 h-1 bg-pink-500 rounded-full animate-pulse"></div>
+              <div className="w-1 h-1 bg-purple-500 rounded-full animate-pulse delay-300"></div>
+              <div className="w-1 h-1 bg-pink-500 rounded-full animate-pulse delay-600"></div>
+            </div>
+          </div>
+        </motion.div>
       </div>
       
       {/* Animated Gradient Orbs */}

@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { Menu, X, Home, Calendar, Activity, BarChart3, MessageCircle, User, LogOut, Heart, Info } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import Image from 'next/image';
+import NotificationBell from '@/components/NotificationBell';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -94,7 +95,8 @@ export default function Navbar() {
             {/* Auth Buttons or User Menu */}
             <div className="hidden md:flex items-center space-x-4">
               {isAuthenticated ? (
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-3">
+                  <NotificationBell />
                   <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-gradient-to-r from-pink-50 to-purple-50">
                     <Heart className="w-4 h-4 text-pink-500" />
                     <span className="text-sm text-gray-700">{user?.name?.split(' ')[0]}</span>
