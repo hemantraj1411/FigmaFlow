@@ -10,10 +10,45 @@ dotenv.config();
 const app = express();
 const PORT = parseInt(process.env.PORT || '5000', 10);
 
-app.use(cors());
+// ==================== CORS CONFIGURATION (FIX) ====================
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5000',
+  'https://figma-flow-pi.vercel.app',
+  'https://figmaflow.vercel.app',
+  'https://figma-flow.vercel.app',
+  'https://feminaflow.vercel.app',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+// CORS middleware
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, postman)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('Blocked origin:', origin);
+      // Still allow for now to avoid breaking production
+      callback(null, true);
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+}));
+
+// Handle preflight requests for all routes
+app.options('*', cors());
+
 app.use(express.json());
 
-// ==================== MONGODB CONNECTION (FIXED) ====================
+// ==================== MONGODB CONNECTION ====================
 const connectDB = async () => {
   try {
     const mongoURI = process.env.MONGODB_URI;
@@ -170,6 +205,7 @@ app.post('/api/auth/register', async (req, res) => {
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '30d' });
     res.json({ success: true, token, user: { id: user._id, name, email } });
   } catch (error) {
+    console.error('Register error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -178,12 +214,17 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
-    if (!user || !(await user.comparePassword(password))) {
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    const isPasswordMatch = await user.comparePassword(password);
+    if (!isPasswordMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '30d' });
     res.json({ success: true, token, user: { id: user._id, name: user.name, email } });
   } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -217,6 +258,7 @@ app.get('/api/periods', auth, async (req, res) => {
     
     res.json({ success: true, periods, prediction });
   } catch (error) {
+    console.error('Get periods error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -229,6 +271,7 @@ app.post('/api/periods', auth, async (req, res) => {
     });
     res.status(201).json({ success: true, period });
   } catch (error) {
+    console.error('Create period error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -242,6 +285,7 @@ app.put('/api/periods/:id', auth, async (req, res) => {
     );
     res.json({ success: true, period });
   } catch (error) {
+    console.error('Update period error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -251,6 +295,7 @@ app.delete('/api/periods/:id', auth, async (req, res) => {
     await Period.findOneAndDelete({ _id: req.params.id, userId: req.userId });
     res.json({ success: true });
   } catch (error) {
+    console.error('Delete period error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -261,6 +306,7 @@ app.get('/api/moods', auth, async (req, res) => {
     const moods = await Mood.find({ userId: req.userId }).sort({ date: -1 });
     res.json({ success: true, moods });
   } catch (error) {
+    console.error('Get moods error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -273,6 +319,7 @@ app.post('/api/moods', auth, async (req, res) => {
     });
     res.status(201).json({ success: true, mood });
   } catch (error) {
+    console.error('Create mood error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -283,6 +330,7 @@ app.get('/api/symptoms', auth, async (req, res) => {
     const symptoms = await Symptom.find({ userId: req.userId }).sort({ date: -1 });
     res.json({ success: true, symptoms });
   } catch (error) {
+    console.error('Get symptoms error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -295,6 +343,7 @@ app.post('/api/symptoms', auth, async (req, res) => {
     });
     res.status(201).json({ success: true, symptom });
   } catch (error) {
+    console.error('Create symptom error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -346,7 +395,7 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Feminaflow API is running' });
 });
 
-// ==================== ROOT ROUTE (FIXES 404 ON /) ====================
+// ==================== ROOT ROUTE ====================
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Feminaflow API is running',
