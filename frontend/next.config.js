@@ -8,10 +8,10 @@ const nextConfig = {
         hostname: '**',
       },
     ],
-    // Add this to fix the quality warning
     qualities: [75, 100],
   },
   output: 'standalone',
+  turbopack: {},
 }
 
-module.exports = nextConfig
+module.exports = nextConfig;

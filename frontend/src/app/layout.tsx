@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from 'sonner';
@@ -10,6 +10,20 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'Feminaflow - Track Your Cycle, Understand Your Body',
   description: 'AI-powered period tracking and women\'s health app',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Feminaflow',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#ff6b9d',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: true,
 };
 
 export default function RootLayout({
